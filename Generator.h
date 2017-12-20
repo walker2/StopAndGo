@@ -7,16 +7,6 @@
 #include <vector>
 #include <string>
 
-static const uint64_t firstConst[2] = {
-        0x976a2d15490d6693,
-        0x844dc6ff26ad7a9a,
-};
-
-static const uint64_t secondConst[2] = {
-        0x844dc6ff26ad7a9a,
-        0x976a2d15490d6693,
-};
-
 class Generator
 {
 public:
@@ -32,16 +22,18 @@ private:
 
     void cipherFile(const std::string &path, bool isEncryption);
 
-    bool doLFSR(uint64_t *p);
-
-    bool doTact(uint64_t *first, uint64_t *second);
+    bool doTact(uint32_t first, uint32_t second);
 
     void applyKey();
 
 private:
     std::vector<uint8_t> key;
-    uint64_t registerOneData[2];
-    uint64_t registerTwoData[2];
+    uint32_t dataOne = 0x976a2d15;
+    uint32_t dataTwo = 0x844dc6ff;
+
+    bool LFSR1();
+
+    bool LFSR2();
 };
 
 

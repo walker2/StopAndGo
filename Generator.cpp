@@ -3,8 +3,6 @@
 #include "Generator.h"
 #include "Tester.h"
 
-#define TAP_MASK_LOW64 0x0
-#define TAP_MASK_HIGH64 0x28000005
 #define TESTING true
 
 void readFile(std::vector<uint8_t> &msg, const std::string &path)
@@ -30,43 +28,40 @@ void writeFile(const std::vector<uint8_t> &msg, const std::string &path)
     out.close();
 }
 
-bool Generator::doLFSR(uint64_t *p)
+bool Generator::LFSR1()
 {
-    uint64_t low = p[0] & TAP_MASK_LOW64;
-    uint64_t high = p[1] & TAP_MASK_HIGH64;
-
-    uint64_t s1 = low ^high;
-    uint32_t s2 = (uint32_t) s1 ^(uint32_t) (s1 >> 32);
-    uint32_t s3 = (s2 & 0xffff) ^(s2 >> 16);
-    uint32_t s4 = (s3 & 0xff) ^(s3 >> 8);
-    uint32_t s5 = (s4 & 0xf) ^(s4 >> 4);
-    uint32_t s6 = (s5 & 0x3) ^(s5 >> 2);
-    uint32_t s7 = (s6 & 0x1) ^(s6 >> 1);
-    p[1] = (p[1] << 1) | (p[0] >> 63);
-    p[0] = (p[0] << 1) | s7;
-    return static_cast<bool>(s7);
+    dataOne = ((((dataOne >> 31) ^ (dataOne >> 30) ^ (dataOne >> 29)
+                 ^ (dataOne >> 27) ^ (dataOne >> 25) ^ dataOne ) & 0x00000001 ) << 31 ) | (dataOne >> 1);
+    return dataOne & 0x1;
 }
 
-bool Generator::doTact(uint64_t *first, uint64_t *second)
+bool Generator::LFSR2()
 {
-    bool a1 = bit(first[0], 0);
-    bool a2 = bit(first[0], 1);
+    dataTwo = ((((dataTwo >> 31) ^ (dataTwo >> 30) ^ (dataTwo >> 29)
+                 ^ (dataTwo >> 27) ^ (dataTwo >> 25) ^ dataTwo ) & 0x00000001 ) << 31 ) | (dataTwo >> 1);
+    return dataTwo & 0x1;
+}
 
-    bool b1 = bit(second[0], 0);
-    bool b2 = bit(second[0], 1);
+bool Generator::doTact(uint32_t first, uint32_t second)
+{
+    bool a1 = bit(first, 0);
+    bool a2 = bit(first, 1);
+
+    bool b1 = bit(second, 0);
+    bool b2 = bit(second, 1);
 
     bool res = 0;
 
     if (a1 == 0 && a2 == 1)
     {
-        res = doLFSR(first);
+        res = LFSR1();
     } else if (b1 == 0 && b2 == 1)
     {
-        res = doLFSR(second);
+        res = LFSR2();
     } else
     {
-        res = doLFSR(first);
-        res ^= doLFSR(second);
+        res = LFSR1();
+        res ^= LFSR2();
     }
     return res;
 }
@@ -86,6 +81,8 @@ void Generator::cipherFile(const std::string &path, bool isEncryption)
     std::vector<uint8_t> message;
     std::vector<uint8_t> result;
     std::vector<uint8_t> generatedData;
+    uint32_t first = 0x976a2d15;
+    uint32_t second = 0x844dc6ff;
 
     readFile(message, path);
     volatile unsigned i;
@@ -96,7 +93,7 @@ void Generator::cipherFile(const std::string &path, bool isEncryption)
         uint8_t generatedByte = 0x0;
         for (int j = 0; j < 8; ++j)
         {
-            if (doTact(registerOneData, registerTwoData))
+            if (doTact(first, second))
                 generatedByte |= 1UL << j;
         }
         generatedData.push_back(generatedByte);
@@ -126,27 +123,15 @@ void Generator::cipherFile(const std::string &path, bool isEncryption)
 
 void Generator::applyKey()
 {
-    registerOneData[0] = firstConst[0];
-    registerOneData[1] = firstConst[1];
-
-    registerTwoData[0] = secondConst[0];
-    registerTwoData[1] = secondConst[1];
 
     for (int i = 0; i < key.size() / 2; i++)
     {
-        registerOneData[0] += key[i];
-        registerTwoData[1] += key[i];
+        dataTwo += key[i];
     }
 
     for (auto i = key.size() / 2; i < key.size(); i++)
     {
-        registerOneData[1] += key[i];
-        registerTwoData[0] += key[i];
+        dataOne += key[i];
     }
-
-#ifdef DEBUG
-    printf("%016"PRIx64":%016"PRIx64"\n", registerOneData[1], registerOneData[0]);
-    printf("%016"PRIx64":%016"PRIx64"\n", registerTwoData[1], registerTwoData[0]);
-#endif
 
 }
