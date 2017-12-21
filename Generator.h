@@ -22,14 +22,14 @@ private:
 
     void cipherFile(const std::string &path, bool isEncryption);
 
-    bool doTact(uint32_t first, uint32_t second);
+    bool doTact();
 
     void applyKey();
 
 private:
     std::vector<uint8_t> key;
-    uint32_t dataOne = 0x976a2d15;
-    uint32_t dataTwo = 0x844dc6ff;
+    uint32_t dataOne = 0xfffffff;
+    uint32_t dataTwo = 0xfffffff;
 
     bool LFSR1();
 

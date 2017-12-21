@@ -14,6 +14,7 @@ void readFile(std::vector<uint8_t> &msg, const std::string &path)
     {
         msg.push_back((uint8_t) c);
     }
+    fclose(f);
 }
 
 void writeFile(const std::vector<uint8_t> &msg, const std::string &path)
@@ -42,13 +43,13 @@ bool Generator::LFSR2()
     return dataTwo & 0x1;
 }
 
-bool Generator::doTact(uint32_t first, uint32_t second)
+bool Generator::doTact()
 {
-    bool a1 = bit(first, 0);
-    bool a2 = bit(first, 1);
+    bool a1 = bit(dataOne, 32);
+    bool a2 = bit(dataOne, 31);
 
-    bool b1 = bit(second, 0);
-    bool b2 = bit(second, 1);
+    bool b1 = bit(dataTwo, 32);
+    bool b2 = bit(dataTwo, 31);
 
     bool res = 0;
 
@@ -81,8 +82,6 @@ void Generator::cipherFile(const std::string &path, bool isEncryption)
     std::vector<uint8_t> message;
     std::vector<uint8_t> result;
     std::vector<uint8_t> generatedData;
-    uint32_t first = 0x976a2d15;
-    uint32_t second = 0x844dc6ff;
 
     readFile(message, path);
     volatile unsigned i;
@@ -93,7 +92,7 @@ void Generator::cipherFile(const std::string &path, bool isEncryption)
         uint8_t generatedByte = 0x0;
         for (int j = 0; j < 8; ++j)
         {
-            if (doTact(first, second))
+            if (doTact())
                 generatedByte |= 1UL << j;
         }
         generatedData.push_back(generatedByte);
