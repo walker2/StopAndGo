@@ -28,11 +28,11 @@ private:
 
     double seqTest(const std::vector<uint8_t> &data);
 
-    double seriesTest(std::vector<uint8_t> bits);
+    double seriesTest(const std::vector<uint8_t> &data);
 
-    void autoTest(std::vector<unsigned char> bits);
+    void autoTest(const std::vector<uint8_t> &data);
 
-    double universalTest(std::vector<uint8_t> bits);
+    double universalTest(const std::vector<uint8_t> &data);
 };
 
 

@@ -102,64 +102,65 @@ double Tester::seqTest(const std::vector<uint8_t> &data)
     return result;
 }
 
-double Tester::seriesTest(std::vector<uint8_t> data)
+double Tester::seriesTest(const std::vector<uint8_t> &data)
 {
-    std::vector<int> zeros(16);
-    std::vector<int> ones(16);
+    int L = 15;
+    uint64_t N = data.size();
+    std::vector<uint64_t> sequencesZero(L + 1);
+    std::vector<uint64_t> sequenceOne(L + 1);
 
-    uint64_t N = data.size() * 8;
-    bool currBit;
-    currBit = bit(data[0], 0);
-    std::string str;
-    int len = 0;
-    for (auto byte : data)
+    int lenOne = 0;
+    int lenZero = 0;
+
+    for(int i = 0; i < N; i++)
     {
-        for (int j = 0; j < 8; j++)
+        for(int j = 0; j < 8; j++)
         {
-            if (bit(byte, j) == currBit)
+            int bit = bit(data[i], j);
+            if (bit == 1)
             {
-                len += 1;
+                lenOne++;
+                if (lenZero <= L)
+                    sequencesZero[lenZero]++;
+                lenZero = 0;
             } else
             {
-                if (len != 0)
-                {
-                    currBit == 1 ? ones[len - 1]++ : zeros[len - 1]++;
-                }
-                currBit = bit(byte, j);
-                len = 0;
+                lenZero++;
+                if (lenOne <= L)
+                    sequenceOne[lenOne]++;
+                lenOne = 0;
             }
         }
     }
 
-    double ret = 0;
-    int curr;
-    for (int i = 1; i <= 15; ++i)
+    double ones = 0;
+    double zeroes = 0;
+
+    for(int i = 1; i < L + 1; i++)
     {
-        curr = ones[i];
-        ret += (pow(curr - (N / pow(2, i + 2)), 2) / (N / (pow(2, i + 2))));
+        double magnitude = ((N * 8) / pow(2, i + 2));
+        ones += pow(sequenceOne[i] - magnitude, 2) / magnitude;
+        zeroes += pow(sequencesZero[i] - magnitude, 2) / magnitude;
     }
-    for (int i = 1; i <= 15; ++i)
-    {
-        curr = zeros[i];
-        ret += (pow(curr - (N / pow(2, i + 2)), 2) / (N / (pow(2, i + 2))));
-    }
-    return ret;
+
+    double sum = ones + zeroes;
+    return  sum;
 }
 
-void Tester::autoTest(std::vector<unsigned char> bits)
+void Tester::autoTest(const std::vector<uint8_t> &data)
 {
     std::cout << "\n======AUTOCORRELATION======\n";
     for (int tau = 10; tau < 30; tau += 5)
     {
         int ones = 0;
-        for (int i = 0; i < bits.size() - tau; ++i)
+        for (int i = 0; i < data.size() - tau; ++i)
         {
             for (int j = 0; j < 8; j++)
             {
-                bit(bits[i], j) ^ bit(bits[i], j + tau) == 1 ? ones++ : 0;
+                bit(data[i], j) ^ bit(data[i], j + tau) == 1 ? ones++ : 0;
             }
         }
-        double res = freqTest(ones, bits.size() - tau);
+        double res = freqTest(ones, data.size() - tau);
         std::cout << "Tau = " << tau << " freqTest = " << res;
         if (res >= -3 && res <= 3)
             printf(" => passed \n");
@@ -169,33 +170,61 @@ void Tester::autoTest(std::vector<unsigned char> bits)
     std::cout << std::endl;
 }
 
-double Tester::universalTest(std::vector<uint8_t> data)
+double Tester::universalTest(const std::vector<uint8_t> &data)
 {
-    std::vector<int> s;
-    std::vector<int> tabs(256);
+    int L = 8;
+    int N = data.size();
+    double V = pow(2,L);
 
-    int l = 8;
-    auto Q = static_cast<uint32_t>(pow(2, l) * 10);
+    auto Q = static_cast<uint32_t>(pow(2, L) * 10);
     double K;
-
     K = data.size() - Q;
 
-    for (int i = 0; i < Q; ++i)
+    std::vector<int> table(V);
+
+    std::vector<int> parts;
+    int bit = 0;
+    int tmp = 0;
+    int z = 0;
+    for (int i = 0; i < N; i++)
     {
-        tabs[data[i]] = i;
+        for (int j = 0; j < 8; j++)
+        {
+            bit = bit(data[i], j);
+
+            tmp += bit * pow(2,z);
+            z++;
+            if (z == L)
+            {
+                parts.push_back(tmp);
+                z = 0;
+                tmp = 0;
+            }
+        }
+    }
+
+    int i = 0;
+    for (i; i < Q; i++)
+    {
+        int b = parts[i];
+        table[b] = i;
     }
 
     double sum = 0;
-    for (uint32_t i = Q; i < Q + K; ++i)
+
+    for (i; i < Q + K; i++)
     {
-        sum += (log2(i - tabs[data[i]]));
+        int b = parts[i];
+        sum += log2(i - table[b]);
+        table[b] = i;
     }
+
+    sum = sum / K ;
 
     double e = 7.1836656;
     double d = 3.238;
-    double c = 0.7 - 0.8 / l + ((4 + 32 / l) * pow(K, -(double) 3 / l)) / 15;
-    sum = sum / K;
-    double z = (sum - e) / (c * sqrt(d));
+    double C = 0.7 - 0.8 / L + ((4 + 32 / L) * pow(K, -(double) 3 / L)) / 15;
 
-    return z;
+    double Z = (sum - e) / (C * sqrt(d));
+    return Z;
 }
